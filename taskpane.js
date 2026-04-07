@@ -46,24 +46,8 @@ function openAuditor() {
 }
 
 async function onSelectionChanged() {
-  // If user clicks in the spreadsheet directly, unlock and refresh
-  if (locked) {
-    // Check if the newly selected cell is different from what
-    // we navigated to — if so, user clicked freely in the sheet
-    try {
-      await Excel.run(async (ctx) => {
-        const cell = ctx.workbook.getActiveCell();
-        cell.load("address");
-        await ctx.sync();
-        if (cell.address !== currentAddr) {
-          // User clicked a new cell freely — unlock and refresh
-          locked = false;
-        }
-      });
-    } catch(e) { locked = false; }
-  }
-
-  if (!locked) await refreshAuditor();
+  // Selection changes in the sheet are ignored —
+  // the auditor only refreshes via Ctrl+Shift+M or Enter (drill in)
 }
 
 /* ── Core refresh ──────────────────────────────────────── */
