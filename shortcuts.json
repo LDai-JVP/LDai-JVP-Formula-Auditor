@@ -1,0 +1,11 @@
+{
+  "version": "1.0",
+  "shortcuts": [
+    {
+      "action": "ShowFormulaAuditor",
+      "key": {
+        "default": "Ctrl+Shift+M"
+      }
+    }
+  ]
+}
