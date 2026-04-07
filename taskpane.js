@@ -1,10 +1,15 @@
- /* ============================================================
-   Formula Auditor — taskpane.js  v2
+
+/* ============================================================
+   Formula Auditor — taskpane.js  v3
    Behaviour:
-   - Ctrl+Shift+M or clicking a formula cell → audits that cell
-   - Arrow Up/Down or mouse click in list → jumps Excel to that
-     cell but keeps the auditor locked on the original cell
-   - Enter on a list item → navigates AND re-audits that cell
+   - Pane open + click new cell in Excel → auto-refreshes
+   - Ctrl+Shift+M → always refreshes to active cell
+   - Arrow Up/Down or mouse click in list → jumps Excel to
+     that cell but keeps auditor locked on original cell
+   - Enter on list item → drills into that cell, pushes
+     current cell onto history stack, re-audits new cell
+   - Backspace → pops history stack, navigates back and
+     re-audits the previous cell
    - Esc → closes the pane
    ============================================================ */
 
@@ -26,20 +31,39 @@ Office.onReady((info) => {
 });
 
 /* ── State ─────────────────────────────────────────────── */
-let refs       = [];
-let activeIdx  = -1;
-let locked     = false;   // true while user is browsing the ref list
+let refs        = [];
+let activeIdx   = -1;
+let locked      = false;   // true only while browsing ref list
+let history     = [];      // stack of {addr, sheetName} for backspace nav
+let currentAddr = null;    // full address of cell currently being audited
 
 /* ── Entry points ──────────────────────────────────────── */
 
 function openAuditor() {
+  // Ctrl+Shift+M always unlocks and refreshes
   locked = false;
   refreshAuditor();
 }
 
 async function onSelectionChanged() {
-  if (locked) return;     // user is navigating refs — don't refresh
-  await refreshAuditor();
+  // If user clicks in the spreadsheet directly, unlock and refresh
+  if (locked) {
+    // Check if the newly selected cell is different from what
+    // we navigated to — if so, user clicked freely in the sheet
+    try {
+      await Excel.run(async (ctx) => {
+        const cell = ctx.workbook.getActiveCell();
+        cell.load("address");
+        await ctx.sync();
+        if (cell.address !== currentAddr) {
+          // User clicked a new cell freely — unlock and refresh
+          locked = false;
+        }
+      });
+    } catch(e) { locked = false; }
+  }
+
+  if (!locked) await refreshAuditor();
 }
 
 /* ── Core refresh ──────────────────────────────────────── */
@@ -53,7 +77,10 @@ async function refreshAuditor() {
       sheet.load("name");
       await ctx.sync();
 
+      currentAddr = cell.address;
       updateCellLabel(cell.address);
+      updateBackButton();
+
       const formula = cell.formulas[0][0];
 
       if (typeof formula !== "string" || !formula.startsWith("=")) {
@@ -64,7 +91,7 @@ async function refreshAuditor() {
       showFormula(formula);
       refs = parseRefs(formula, sheet.name);
       renderRefList();
-      setActive(refs.length > 0 ? 0 : -1, false); // don't navigate on initial load
+      setActive(refs.length > 0 ? 0 : -1, false);
     });
   } catch (e) {
     console.error("Formula Auditor error:", e);
@@ -97,6 +124,15 @@ function parseRefs(formula, activeSheet) {
 
 function updateCellLabel(addr) {
   document.getElementById("cell-addr").textContent = addr;
+}
+
+function updateBackButton() {
+  const btn = document.getElementById("back-btn");
+  if (!btn) return;
+  btn.style.display   = history.length > 0 ? "inline-flex" : "none";
+  btn.title = history.length > 0
+    ? `Back to ${history[history.length - 1].label}`
+    : "";
 }
 
 function showNoFormula(val) {
@@ -132,51 +168,44 @@ function renderRefList() {
 
   refs.forEach((ref, i) => {
     const item = document.createElement("div");
-    item.className  = "ref-item";
-    item.tabIndex   = 0;
+    item.className   = "ref-item";
+    item.tabIndex    = 0;
     item.dataset.idx = i;
-    item.innerHTML  = `
+    item.innerHTML   = `
       <div class="ref-icon">
         <svg viewBox="0 0 10 10"><rect x="1" y="1" width="8" height="8" rx="1"/></svg>
       </div>
       <span class="ref-addr">${ref.addr}</span>
       <span class="ref-sheet">${ref.sheetName}</span>`;
 
-    // Mouse click → jump only (lock auditor)
+    // Mouse click → jump only, lock auditor
     item.addEventListener("click", () => {
       locked = true;
       setActive(i, true);
     });
 
-    // Keyboard on individual item
     item.addEventListener("keydown", (e) => handleItemKey(e, i));
-
     list.appendChild(item);
   });
 
   document.onkeydown = handleGlobalKey;
 }
 
-/* ── Active row highlight ───────────────────────────────── */
+/* ── Active row ─────────────────────────────────────────── */
 
 function setActive(idx, navigate) {
   document.querySelectorAll(".ref-item").forEach(el => el.classList.remove("active"));
   activeIdx = idx;
   if (idx < 0 || idx >= refs.length) return;
-
   const el = document.querySelectorAll(".ref-item")[idx];
-  if (el) {
-    el.classList.add("active");
-    el.scrollIntoView({ block: "nearest" });
-  }
-
+  if (el) { el.classList.add("active"); el.scrollIntoView({ block: "nearest" }); }
   if (navigate) navigateTo(refs[idx]);
 }
 
-/* ── Navigation ─────────────────────────────────────────── */
+/* ── Keyboard handlers ───────────────────────────────────── */
 
 function handleGlobalKey(e) {
-  if (!refs.length) return;
+  if (!refs.length && e.key !== "Backspace" && e.key !== "Escape") return;
 
   if (e.key === "ArrowDown") {
     e.preventDefault();
@@ -190,8 +219,11 @@ function handleGlobalKey(e) {
 
   } else if (e.key === "Enter") {
     e.preventDefault();
-    // Enter → navigate AND re-audit the destination cell
     drillInto(activeIdx);
+
+  } else if (e.key === "Backspace") {
+    e.preventDefault();
+    goBack();
 
   } else if (e.key === "Escape") {
     Office.context.ui.closeContainer();
@@ -205,13 +237,49 @@ function handleItemKey(e, idx) {
   }
 }
 
-/* ── Drill in: navigate + re-audit ─────────────────────── */
+/* ── Drill in: push history, navigate, re-audit ─────────── */
 
 async function drillInto(idx) {
   if (idx < 0 || idx >= refs.length) return;
-  locked = false;                   // unlock so refresh fires after navigation
+
+  // Push current cell onto history before navigating
+  history.push({
+    sheetName: refs[idx].sheetName, // placeholder — we capture actual below
+    addr:      null,
+    label:     currentAddr
+  });
+
+  // Capture the actual current address for back navigation
+  try {
+    await Excel.run(async (ctx) => {
+      const cell  = ctx.workbook.getActiveCell();
+      const sheet = ctx.workbook.worksheets.getActiveWorksheet();
+      cell.load("address");
+      sheet.load("name");
+      await ctx.sync();
+      history[history.length - 1] = {
+        addr:      cell.address.replace(/^.*!/, ""),
+        sheetName: sheet.name,
+        label:     cell.address
+      };
+    });
+  } catch(e) {}
+
+  locked = false;
   await navigateTo(refs[idx]);
-  await refreshAuditor();           // re-audit the newly selected cell
+  await refreshAuditor();
+  updateBackButton();
+}
+
+/* ── Go back: pop history, navigate, re-audit ───────────── */
+
+async function goBack() {
+  if (history.length === 0) return;
+  const prev = history.pop();
+  locked = false;
+  await navigateTo(prev);
+  await refreshAuditor();
+  updateBackButton();
 }
 
 /* ── Navigate Excel to a cell ───────────────────────────── */
