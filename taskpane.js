@@ -1,4 +1,5 @@
 
+
 /* ============================================================
    Formula Auditor — taskpane.js  v4
    Behaviour:
@@ -270,12 +271,11 @@ function setActive(idx, navigate) {
 
   activeIdx = idx;
 
-  // Home cell selected (idx === refs.length)
+  // Home cell selected (idx === refs.length) — highlight only, never auto-navigate
   if (idx === refs.length) {
-    if (homeBox && history.length > 0) {
+    if (homeBox) {
       homeBox.style.outline = "2px solid #217346";
       homeBox.scrollIntoView({ block: "nearest" });
-      if (navigate) goHome();
     }
     return;
   }
@@ -292,26 +292,32 @@ function handleGlobalKey(e) {
   if (e.key === "ArrowDown") {
     e.preventDefault();
     locked = true;
-    // If at last ref or beyond, move to home cell
     const next = activeIdx + 1;
     if (next >= refs.length) {
-      setActive(refs.length, history.length > 0); // navigate home only if drilled in
+      // Move highlight to home cell — never auto-navigate
+      setActive(refs.length, false);
     } else {
       setActive(next, true);
     }
+
   } else if (e.key === "ArrowUp") {
     e.preventDefault();
     locked = true;
     if (activeIdx === refs.length) {
-      // From home cell, go back to last ref
+      // From home cell back to last ref row — navigate to that ref
       setActive(refs.length - 1, true);
     } else {
       setActive((activeIdx - 1 + refs.length) % refs.length, true);
     }
+
   } else if (e.key === "Enter") {
     e.preventDefault();
-    if (activeIdx === refs.length) { goHome(); }
-    else { drillInto(activeIdx); }
+    if (activeIdx === refs.length) {
+      // Enter on home cell — always go home regardless of history depth
+      goHome();
+    } else {
+      drillInto(activeIdx);
+    }
   } else if (e.key === "Backspace") {
     e.preventDefault();
     goBack();
