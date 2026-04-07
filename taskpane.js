@@ -1,5 +1,4 @@
 
-
 /* ============================================================
    Formula Auditor — taskpane.js  v4
    Behaviour:
@@ -207,7 +206,7 @@ function renderHomeCell() {
       </svg>
       <div style="display:flex;flex-direction:column;gap:1px;flex:1;overflow:hidden;">
         <span style="font-size:9px;color:${isAtHome ? "#217346" : "#888"};">
-          ${isAtHome ? "Home cell — you are here" : "Home cell — click or ↓ to return"}
+          ${isAtHome ? "Home cell — return to root" : "Home cell — return to initial formula"}
         </span>
         <span style="font-family:'Consolas',monospace;font-size:10px;font-weight:600;color:${isAtHome ? "#217346" : "#444"};">
           ${homeCell.sheetName}!${homeCell.addr}
@@ -271,11 +270,12 @@ function setActive(idx, navigate) {
 
   activeIdx = idx;
 
-  // Home cell selected (idx === refs.length) — highlight only, never auto-navigate
+  // Home cell selected (idx === refs.length) — highlight always, navigate if told to
   if (idx === refs.length) {
     if (homeBox) {
       homeBox.style.outline = "2px solid #217346";
       homeBox.scrollIntoView({ block: "nearest" });
+      if (navigate) goHome();
     }
     return;
   }
@@ -294,8 +294,9 @@ function handleGlobalKey(e) {
     locked = true;
     const next = activeIdx + 1;
     if (next >= refs.length) {
-      // Move highlight to home cell — never auto-navigate
-      setActive(refs.length, false);
+      // At root: arrow to home navigates immediately
+      // In sub-formula: arrow to home only highlights, Enter confirms
+      setActive(refs.length, history.length === 0);
     } else {
       setActive(next, true);
     }
