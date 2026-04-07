@@ -1,23 +1,19 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <meta name="color-scheme" content="light only"/>
   <title>Formula Auditor</title>
   <script src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js"></script>
   <style>
-    :root { color-scheme: light only; }
     * { box-sizing: border-box; margin: 0; padding: 0; }
-
-    html, body {
-      background: #ffffff !important;
-      color: #1f1f1f !important;
-    }
 
     body {
       font-family: "Segoe UI", sans-serif;
       font-size: 13px;
+      background: #fff;
+      color: #1f1f1f;
       display: flex;
       flex-direction: column;
       height: 100vh;
@@ -43,15 +39,14 @@
 
     #cell-label {
       font-size: 11px;
-      color: #888888;
+      color: #888;
       padding: 8px 14px 2px;
       flex-shrink: 0;
-      background: #ffffff;
     }
 
     #formula-box {
       background: #f4f4f4;
-      border: 1px solid #dddddd;
+      border: 1px solid #ddd;
       border-radius: 4px;
       margin: 0 12px 10px;
       padding: 8px 10px;
@@ -65,19 +60,17 @@
 
     #refs-label {
       font-size: 11px;
-      color: #888888;
+      color: #888;
       padding: 0 14px 4px;
       flex-shrink: 0;
-      background: #ffffff;
     }
 
     #no-formula {
       text-align: center;
-      color: #999999;
+      color: #999;
       padding: 30px 20px;
       font-size: 12px;
       display: none;
-      background: #ffffff;
     }
 
     #refs-list {
@@ -86,7 +79,6 @@
       margin: 0 12px 12px;
       border: 1px solid #e0e0e0;
       border-radius: 4px;
-      background: #ffffff;
     }
 
     .ref-item {
@@ -97,8 +89,6 @@
       border-bottom: 1px solid #f0f0f0;
       transition: background 0.1s;
       outline: none;
-      background: #ffffff;
-      color: #1f1f1f;
     }
     .ref-item:last-child { border-bottom: none; }
     .ref-item:hover { background: #f0f7f3; }
@@ -109,44 +99,49 @@
     }
 
     .ref-icon {
-      width: 18px; height: 18px; margin-right: 8px;
-      background: #217346; border-radius: 3px;
-      display: flex; align-items: center; justify-content: center;
+      width: 18px;
+      height: 18px;
+      margin-right: 8px;
+      background: #217346;
+      border-radius: 3px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
       flex-shrink: 0;
     }
     .ref-icon svg { width: 10px; height: 10px; fill: white; }
 
     .ref-addr { font-family: "Cascadia Code", "Consolas", monospace; }
-    .ref-sheet { font-size: 10px; color: #888888; margin-left: auto; padding-left: 8px; }
+    .ref-sheet { font-size: 10px; color: #888; margin-left: auto; padding-left: 8px; }
 
     #hint {
       font-size: 10px;
-      color: #aaaaaa;
+      color: #aaa;
       text-align: center;
       padding: 6px;
       border-top: 1px solid #f0f0f0;
       flex-shrink: 0;
-      background: #ffffff;
     }
   </style>
 </head>
 <body>
 
   <div id="header">
-    <h1>&#128208; Formula Auditor</h1>
-    <button id="close-btn" title="Close">&#x2715;</button>
+    <button id="back-btn" title="Go back" onclick="goBack()" style="display:none;background:none;border:none;color:white;font-size:16px;cursor:pointer;opacity:0.85;padding:0;align-items:center;">&#8592;</button>
+    <h1>📐 Formula Auditor</h1>
+    <button id="close-btn" title="Close">✕</button>
   </div>
 
-  <div id="cell-label">Active cell: <span id="cell-addr">&#8212;</span></div>
+  <div id="cell-label">Active cell: <span id="cell-addr">—</span></div>
 
-  <div id="formula-box">Select a formula cell&hellip;</div>
+  <div id="formula-box" id="formula-display">Select a formula cell…</div>
 
   <div id="no-formula">No formula in this cell.<br/>Select a cell containing a formula.</div>
 
   <div id="refs-label">Referenced cells <span id="ref-count"></span></div>
   <div id="refs-list"></div>
 
-  <div id="hint">&#x2191; &#x2193; to navigate &nbsp;&middot;&nbsp; Enter to jump &nbsp;&middot;&nbsp; Esc to close</div>
+  <div id="hint">↑ ↓ navigate &nbsp;·&nbsp; Enter to drill in &nbsp;·&nbsp; Backspace to go back &nbsp;·&nbsp; Esc to close</div>
 
   <script src="taskpane.js"></script>
 </body>
