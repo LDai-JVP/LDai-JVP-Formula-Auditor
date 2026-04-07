@@ -261,9 +261,46 @@ async function goBack() {
   if (history.length === 0) return;
   const prev = history.pop();
   locked = false;
+
+  // Navigate Excel to the previous cell first
   await navigateTo(prev);
-  await refreshAuditor();
+
+  // Then refresh the auditor using the known previous cell data
+  // directly — avoids race condition with Excel's active cell
+  await refreshFromRef(prev);
   updateBackButton();
+}
+
+/* ── Refresh auditor from a known {addr, sheetName} ─────── */
+
+async function refreshFromRef({ addr, sheetName }) {
+  try {
+    await Excel.run(async (ctx) => {
+      const sheet = ctx.workbook.worksheets.getItem(sheetName);
+      const cell  = sheet.getRange(addr);
+      cell.load("address");
+      cell.load("formulas");
+      await ctx.sync();
+
+      currentAddr = cell.address;
+      updateCellLabel(cell.address);
+      updateBackButton();
+
+      const formula = cell.formulas[0][0];
+
+      if (typeof formula !== "string" || !formula.startsWith("=")) {
+        showNoFormula(formula);
+        return;
+      }
+
+      showFormula(formula);
+      refs = parseRefs(formula, sheetName);
+      renderRefList();
+      setActive(refs.length > 0 ? 0 : -1, false);
+    });
+  } catch (e) {
+    console.error("Formula Auditor goBack error:", e);
+  }
 }
 
 /* ── Navigate Excel to a cell ───────────────────────────── */
