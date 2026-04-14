@@ -1,4 +1,3 @@
-
 /* ============================================================
    Formula Auditor — taskpane.js  v4 final
    Behaviour:
@@ -28,8 +27,21 @@ Office.onReady((info) => {
     await ctx.sync();
   });
 
-  refreshAuditor(true);
+  // Global keydown registered once at load — handles Esc from anywhere
+  document.addEventListener("keydown", handleGlobalKey);
+
+  refreshAuditor(true).then(() => focusFirstItem());
 });
+
+function focusFirstItem() {
+  const first = document.querySelector(".ref-item");
+  if (first) {
+    first.focus();
+  } else {
+    const home = document.getElementById("home-cell-box");
+    if (home) home.focus();
+  }
+}
 
 /* ── State ─────────────────────────────────────────────── */
 let refs        = [];
@@ -45,7 +57,7 @@ function openAuditor() {
   locked   = false;
   history  = [];
   homeCell = null;
-  refreshAuditor(true);
+  refreshAuditor(true).then(() => focusFirstItem());
 }
 
 async function onSelectionChanged() {
@@ -90,6 +102,7 @@ async function refreshAuditor(captureHome) {
       refs = parseRefs(formula, sheetName);
       renderRefList();
       setActive(refs.length > 0 ? 0 : -1, false);
+      focusFirstItem();
     });
   } catch (e) {
     console.error("Formula Auditor error:", e);
@@ -122,6 +135,7 @@ async function refreshFromRef({ addr, sheetName }) {
       refs = parseRefs(formula, sheetName);
       renderRefList();
       setActive(refs.length > 0 ? 0 : -1, false);
+      focusFirstItem();
     });
   } catch (e) {
     console.error("Formula Auditor refreshFromRef error:", e);
@@ -265,8 +279,6 @@ function renderRefList() {
     item.addEventListener("keydown", (e) => handleItemKey(e, i));
     list.appendChild(item);
   });
-
-  document.onkeydown = handleGlobalKey;
 }
 
 /* ── Active row ─────────────────────────────────────────── */
