@@ -2,7 +2,7 @@
   "version": "1.0",
   "shortcuts": [
     {
-      "action": "ShowFormulaAuditor",
+      "action": "ShowAuditorShortcut",
       "key": {
         "default": "Ctrl+Shift+M"
       }
